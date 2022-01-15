@@ -5,8 +5,10 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"os"
 	"regexp"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -14,12 +16,12 @@ import (
 )
 
 func main() {
-	start := time.Now()
 	prefixRegex := regexp.MustCompile("^0x[0-9a-fA-F]{1,39}$")
 	suffixRegex := regexp.MustCompile("^[0-9a-fA-F]{1,39}$")
 
 	prefix := flag.String("prefix", "", "address prefix")
 	suffix := flag.String("suffix", "", "address suffix")
+	concurrency := flag.Int("concurrency", 4, "concurrent goroutines")
 	flag.Parse()
 
 	if *prefix == "" && *suffix == "" {
@@ -37,6 +39,25 @@ func main() {
 	introMessage := fmt.Sprintf("Generating address with prefix=%s , suffix=%s\n", *prefix, *suffix)
 	fmt.Println((introMessage))
 
+	var wg sync.WaitGroup
+
+	for i := 1; i <= *concurrency; i++ {
+		wg.Add(1)
+
+		i := i
+		go func() {
+			defer wg.Done()
+			findAddressWorker(i, *prefix, *suffix)
+		}()
+	}
+
+	wg.Wait()
+}
+
+func findAddressWorker(id int, prefix string, suffix string) {
+	start := time.Now()
+	fmt.Printf("Worker %d starting...\n", id)
+
 	for {
 		privateKey, err := crypto.GenerateKey()
 		if err != nil {
@@ -51,10 +72,11 @@ func main() {
 
 		address := crypto.PubkeyToAddress(*publicKeyECDSA).Hex()
 
-		if strings.HasPrefix(address, *prefix) && strings.HasSuffix(address, *suffix) {
+		if strings.HasPrefix(address, prefix) && strings.HasSuffix(address, suffix) {
 			publicKeyBytes := crypto.FromECDSAPub(publicKeyECDSA)
 			privateKeyBytes := crypto.FromECDSA(privateKey)
 
+			fmt.Printf("\nWorker %d found address:\n", id)
 			fmt.Println("Address:", address)
 			fmt.Println("Public key:", hexutil.Encode(publicKeyBytes)[4:])
 			fmt.Println("Private key:", hexutil.Encode(privateKeyBytes)[2:])
@@ -64,4 +86,6 @@ func main() {
 			break
 		}
 	}
+	// Exit as soon as any worker finds the address
+	os.Exit(0)
 }
