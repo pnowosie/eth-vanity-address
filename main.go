@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"regexp"
+	"strings"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -34,22 +35,29 @@ func main() {
 	introMessage := fmt.Sprintf("Generating address with prefix=%s , suffix=%s\n", *prefix, *suffix)
 	fmt.Println((introMessage))
 
-	privateKey, err := crypto.GenerateKey()
-	if err != nil {
-		log.Fatal(err)
+	for {
+		privateKey, err := crypto.GenerateKey()
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		publicKey := privateKey.Public()
+		publicKeyECDSA, ok := publicKey.(*ecdsa.PublicKey)
+		if !ok {
+			log.Fatal("error casting public key to ECDSA")
+		}
+
+		address := crypto.PubkeyToAddress(*publicKeyECDSA).Hex()
+
+		if strings.HasPrefix(address, *prefix) && strings.HasSuffix(address, *suffix) {
+			publicKeyBytes := crypto.FromECDSAPub(publicKeyECDSA)
+			privateKeyBytes := crypto.FromECDSA(privateKey)
+
+			fmt.Println("Address:", address)
+			fmt.Println("Public key:", hexutil.Encode(publicKeyBytes)[4:])
+			fmt.Println("Private key:", hexutil.Encode(privateKeyBytes)[2:])
+
+			break
+		}
 	}
-
-	publicKey := privateKey.Public()
-	publicKeyECDSA, ok := publicKey.(*ecdsa.PublicKey)
-	if !ok {
-		log.Fatal("error casting public key to ECDSA")
-	}
-
-	address := crypto.PubkeyToAddress(*publicKeyECDSA).Hex()
-	publicKeyBytes := crypto.FromECDSAPub(publicKeyECDSA)
-	privateKeyBytes := crypto.FromECDSA(privateKey)
-
-	fmt.Println("Address:", address)
-	fmt.Println("Public key:", hexutil.Encode(publicKeyBytes)[4:])
-	fmt.Println("Private key:", hexutil.Encode(privateKeyBytes)[2:])
 }
