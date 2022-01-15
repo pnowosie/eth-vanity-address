@@ -12,8 +12,8 @@ import (
 )
 
 func main() {
-	prefix_regex := regexp.MustCompile("^0x[0-9a-fA-F]{1,39}$")
-	suffix_regex := regexp.MustCompile("^[0-9a-fA-F]{1,39}$")
+	prefixRegex := regexp.MustCompile("^0x[0-9a-fA-F]{1,39}$")
+	suffixRegex := regexp.MustCompile("^[0-9a-fA-F]{1,39}$")
 
 	prefix := flag.String("prefix", "", "address prefix")
 	suffix := flag.String("suffix", "", "address suffix")
@@ -23,13 +23,16 @@ func main() {
 		log.Fatal("Must specify prefix or suffix")
 	}
 
-	if *prefix != "" && !prefix_regex.MatchString(*prefix) {
+	if *prefix != "" && !prefixRegex.MatchString(*prefix) {
 		log.Fatal("Prefix must begin with '0x' and contain only valid characters")
 	}
 
-	if *suffix != "" && !suffix_regex.MatchString(*suffix) {
+	if *suffix != "" && !suffixRegex.MatchString(*suffix) {
 		log.Fatal("Suffix must contain only valid characters")
 	}
+
+	introMessage := fmt.Sprintf("Generating address with prefix=%s , suffix=%s\n", *prefix, *suffix)
+	fmt.Println((introMessage))
 
 	privateKey, err := crypto.GenerateKey()
 	if err != nil {
