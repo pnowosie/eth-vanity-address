@@ -7,12 +7,14 @@ import (
 	"log"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/crypto"
 )
 
 func main() {
+	start := time.Now()
 	prefixRegex := regexp.MustCompile("^0x[0-9a-fA-F]{1,39}$")
 	suffixRegex := regexp.MustCompile("^[0-9a-fA-F]{1,39}$")
 
@@ -57,6 +59,8 @@ func main() {
 			fmt.Println("Public key:", hexutil.Encode(publicKeyBytes)[4:])
 			fmt.Println("Private key:", hexutil.Encode(privateKeyBytes)[2:])
 
+			elapsed := time.Since(start)
+			fmt.Printf("Total time: %s\n", elapsed)
 			break
 		}
 	}
