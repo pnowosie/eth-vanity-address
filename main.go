@@ -2,22 +2,39 @@ package main
 
 import (
 	"crypto/ecdsa"
+	"flag"
 	"fmt"
 	"log"
+	"regexp"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/crypto"
-	"golang.org/x/crypto/sha3"
 )
 
 func main() {
+	prefix_regex := regexp.MustCompile("^0x[0-9a-fA-F]{1,39}$")
+	suffix_regex := regexp.MustCompile("^[0-9a-fA-F]{1,39}$")
+
+	prefix := flag.String("prefix", "", "address prefix")
+	suffix := flag.String("suffix", "", "address suffix")
+	flag.Parse()
+
+	if *prefix == "" && *suffix == "" {
+		log.Fatal("Must specify prefix or suffix")
+	}
+
+	if *prefix != "" && !prefix_regex.MatchString(*prefix) {
+		log.Fatal("Prefix must begin with '0x' and contain only valid characters")
+	}
+
+	if *suffix != "" && !suffix_regex.MatchString(*suffix) {
+		log.Fatal("Suffix must contain only valid characters")
+	}
+
 	privateKey, err := crypto.GenerateKey()
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	privateKeyBytes := crypto.FromECDSA(privateKey)
-	fmt.Println(hexutil.Encode(privateKeyBytes)[2:]) // 0xfad9c8855b740a0b7ed4c221dbad0f33a83a49cad6b3fe8d5817ac83d38b6a19
 
 	publicKey := privateKey.Public()
 	publicKeyECDSA, ok := publicKey.(*ecdsa.PublicKey)
@@ -25,13 +42,11 @@ func main() {
 		log.Fatal("error casting public key to ECDSA")
 	}
 
-	publicKeyBytes := crypto.FromECDSAPub(publicKeyECDSA)
-	fmt.Println(hexutil.Encode(publicKeyBytes)[4:]) // 0x049a7df67f79246283fdc93af76d4f8cdd62c4886e8cd870944e817dd0b97934fdd7719d0810951e03418205868a5c1b40b192451367f28e0088dd75e15de40c05
-
 	address := crypto.PubkeyToAddress(*publicKeyECDSA).Hex()
-	fmt.Println(address) // 0x96216849c49358B10257cb55b28eA603c874b05E
+	publicKeyBytes := crypto.FromECDSAPub(publicKeyECDSA)
+	privateKeyBytes := crypto.FromECDSA(privateKey)
 
-	hash := sha3.NewLegacyKeccak256()
-	hash.Write(publicKeyBytes[1:])
-	fmt.Println(hexutil.Encode(hash.Sum(nil)[12:])) // 0x96216849c49358b10257cb55b28ea603c874b05e
+	fmt.Println("Address:", address)
+	fmt.Println("Public key:", hexutil.Encode(publicKeyBytes)[4:])
+	fmt.Println("Private key:", hexutil.Encode(privateKeyBytes)[2:])
 }
