@@ -11,11 +11,7 @@ git clone https://github.com/6/simple-eth-vanity-address.git
 
 cd simple-eth-vanity-address
 
-# Most computers:
 go build
-
-# M1 Mac:
-GOOS=darwin GOARCH=arm64 go build
 ```
 
 **generating vanity address:**
