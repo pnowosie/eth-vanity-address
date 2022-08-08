@@ -1,6 +1,6 @@
-simple and fast ethereum vanity address generator, using goroutines for extra speed.
+simple and fast ethereum vanity address generator.
 
-only uses a single external dependency: [ethereum/go-ethereum](https://github.com/ethereum/go-ethereum), the official go implementation of Ethereum.
+it only uses one external dependency: [ethereum/go-ethereum](https://github.com/ethereum/go-ethereum) -- the official go implementation of Ethereum.
 
 
 **install & build:**
