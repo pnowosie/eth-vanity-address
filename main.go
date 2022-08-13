@@ -22,6 +22,7 @@ func main() {
 	prefix := flag.String("prefix", "", "address prefix")
 	suffix := flag.String("suffix", "", "address suffix")
 	concurrency := flag.Int("concurrency", 4, "concurrent goroutines")
+	ignoreCase := flag.Bool("ignore-case", false, "case insensitive")
 	flag.Parse()
 
 	if *prefix == "" && *suffix == "" {
@@ -39,6 +40,16 @@ func main() {
 	introMessage := fmt.Sprintf("Generating address with prefix=%s , suffix=%s\n", *prefix, *suffix)
 	fmt.Println((introMessage))
 
+	var searchPrefix string
+	var searchSuffix string
+	if *ignoreCase {
+		searchPrefix = strings.ToLower(*prefix)
+		searchSuffix = strings.ToLower(*suffix)
+	} else {
+		searchPrefix = *prefix
+		searchSuffix = *suffix
+	}
+
 	var wg sync.WaitGroup
 
 	for i := 1; i <= *concurrency; i++ {
@@ -47,14 +58,14 @@ func main() {
 		i := i
 		go func() {
 			defer wg.Done()
-			findAddressWorker(i, *prefix, *suffix)
+			findAddressWorker(i, searchPrefix, searchSuffix, *ignoreCase)
 		}()
 	}
 
 	wg.Wait()
 }
 
-func findAddressWorker(id int, prefix string, suffix string) {
+func findAddressWorker(id int, prefix string, suffix string, ignoreCase bool) {
 	start := time.Now()
 	fmt.Printf("Worker %d starting...\n", id)
 
@@ -71,8 +82,14 @@ func findAddressWorker(id int, prefix string, suffix string) {
 		}
 
 		address := crypto.PubkeyToAddress(*publicKeyECDSA).Hex()
+		var processedAddress string
+		if ignoreCase {
+			processedAddress = strings.ToLower(address)
+		} else {
+			processedAddress = address
+		}
 
-		if strings.HasPrefix(address, prefix) && strings.HasSuffix(address, suffix) {
+		if strings.HasPrefix(processedAddress, prefix) && strings.HasSuffix(processedAddress, suffix) {
 			publicKeyBytes := crypto.FromECDSAPub(publicKeyECDSA)
 			privateKeyBytes := crypto.FromECDSA(privateKey)
 

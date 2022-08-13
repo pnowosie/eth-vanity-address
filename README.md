@@ -25,3 +25,8 @@ Address: 0xABCaa219d2Ce67B09A4e5071c21a4A2B2b921DEF
 Public key: ...
 Private key: ...
 ```
+
+Other flags:
+
+- `-ignore-case` to do a case-insensitive match
+- `-concurrency n` specify the concurrency (replace `n` with number)
