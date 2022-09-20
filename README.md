@@ -2,7 +2,6 @@ simple and fast ethereum vanity address generator.
 
 it only uses one external dependency: [ethereum/go-ethereum](https://github.com/ethereum/go-ethereum) -- the official go implementation of Ethereum.
 
-
 **install & build:**
 
 first, [install go](https://go.dev/doc/install), and then clone+build this program:
@@ -30,3 +29,7 @@ Other flags:
 
 - `-ignore-case` to do a case-insensitive match
 - `-concurrency n` specify the concurrency (replace `n` with number)
+
+**disclaimer:** 
+
+this software has not been audited. use at your own risk!
