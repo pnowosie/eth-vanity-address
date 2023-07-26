@@ -22,8 +22,8 @@ import (
 )
 
 var (
-	workerProgressUpdateDuration  = 5 * time.Second
-	handlerProgressUpdateDuration = 15 * time.Second
+	workerProgressUpdateDuration  = 30 * time.Second
+	handlerProgressUpdateDuration = 15 * time.Minute
 )
 
 func main() {
