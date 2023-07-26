@@ -20,8 +20,8 @@ import (
 )
 
 var (
-	workerProgressUpdateDuration  = 45 * time.Second
-	handlerProgressUpdateDuration = 10 * time.Minute
+	workerProgressUpdateDuration  = 5 * time.Second
+	handlerProgressUpdateDuration = 15 * time.Second
 )
 
 func main() {
@@ -32,6 +32,7 @@ func main() {
 	prefix := flag.String("prefix", "", "address prefix")
 	suffix := flag.String("suffix", "", "address suffix")
 	ignoreCase := flag.Bool("ignore-case", false, "case insensitive")
+	password := flag.String("password", "", "when provided saves key into password protected key file")
 	flag.Parse()
 
 	if *prefix == "" && *suffix == "" {
@@ -64,6 +65,12 @@ func main() {
 		handleProgressUpdate(progressChn)
 	}()
 
+	keyFoundChn := make(chan *ecdsa.PrivateKey)
+	trimPasswd := strings.TrimRight(*password, "\r\n")
+	go func() {
+		handleKeyFound(keyFoundChn, trimPasswd)
+	}()
+
 	// https://www.developer.com/languages/os-signals-go/
 	sigchnl := make(chan os.Signal, 1)
 	signal.Notify(sigchnl)
@@ -83,14 +90,21 @@ func main() {
 		i := i
 		go func() {
 			defer wg.Done()
-			findAddressWorker(i, searchPrefix, searchSuffix, *ignoreCase, progressChn)
+			findAddressWorker(i, searchPrefix, searchSuffix, *ignoreCase, progressChn, keyFoundChn)
 		}()
 	}
 
 	wg.Wait()
 }
 
-func findAddressWorker(id int, prefix string, suffix string, ignoreCase bool, progressChn chan int) {
+func findAddressWorker(
+	id int,
+	prefix string,
+	suffix string,
+	ignoreCase bool,
+	progressChn chan int,
+	keyFoundChn chan *ecdsa.PrivateKey,
+) {
 	start := time.Now()
 	keysChecked := 0
 
@@ -115,15 +129,9 @@ func findAddressWorker(id int, prefix string, suffix string, ignoreCase bool, pr
 		}
 
 		if strings.HasPrefix(processedAddress, prefix) && strings.HasSuffix(processedAddress, suffix) {
-			publicKeyBytes := crypto.FromECDSAPub(publicKeyECDSA)
-			privateKeyBytes := crypto.FromECDSA(privateKey)
 
-			log.Println(strings.Join([]string{
-				fmt.Sprintf("Worker %d found address:\n", id),
-				fmt.Sprintf("Address    : %s", address),
-				fmt.Sprintf("Public key : %s", hexutil.Encode(publicKeyBytes)[4:]),
-				fmt.Sprintf("Private key: %s\n", hexutil.Encode(privateKeyBytes)[2:]),
-			}, "\n"))
+			log.Println(fmt.Sprintf("Worker %d found address: %s", id, address))
+			keyFoundChn <- privateKey
 
 			// no break, find me more addresses
 			// break
@@ -145,7 +153,7 @@ func handleStopSignal(signal os.Signal) {
 		fmt.Println("Program will terminate now.")
 		os.Exit(0)
 	} else if signal == syscall.SIGINT {
-		log.Println("Received interupt signal. BYE!")
+		log.Println("Received interrupt signal. BYE!")
 		fmt.Println("Closing.")
 		os.Exit(0)
 	}
@@ -161,5 +169,21 @@ func handleProgressUpdate(updateChn chan int) {
 			log.Println(p.Sprintf("Total keys checked: %d", keysChecked))
 			start = time.Now()
 		}
+	}
+}
+
+func handleKeyFound(keyChn chan *ecdsa.PrivateKey, password string) {
+	for privateKey := range keyChn {
+		publicKeyECDSA, _ := privateKey.Public().(*ecdsa.PublicKey)
+		address := crypto.PubkeyToAddress(*publicKeyECDSA).Hex()
+		publicKeyBytes := crypto.FromECDSAPub(publicKeyECDSA)
+		privateKeyBytes := crypto.FromECDSA(privateKey)
+
+		log.Println(strings.Join([]string{
+			"Found key",
+			fmt.Sprintf("Address    : %s", address),
+			fmt.Sprintf("Public key : %s", hexutil.Encode(publicKeyBytes)[4:]),
+			fmt.Sprintf("Private key: %s\n", hexutil.Encode(privateKeyBytes)[2:]),
+		}, "\n"))
 	}
 }
