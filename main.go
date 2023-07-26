@@ -7,21 +7,21 @@ import (
 	"log"
 	"os"
 	"regexp"
+	"runtime"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/crypto"
 )
 
 func main() {
+	concurrency := runtime.NumCPU()
 	prefixRegex := regexp.MustCompile("^0x[0-9a-fA-F]{1,39}$")
 	suffixRegex := regexp.MustCompile("^[0-9a-fA-F]{1,39}$")
 
 	prefix := flag.String("prefix", "", "address prefix")
 	suffix := flag.String("suffix", "", "address suffix")
-	concurrency := flag.Int("concurrency", 4, "concurrent goroutines")
 	ignoreCase := flag.Bool("ignore-case", false, "case insensitive")
 	flag.Parse()
 
@@ -37,8 +37,8 @@ func main() {
 		log.Fatal("Suffix must contain only valid characters")
 	}
 
-	introMessage := fmt.Sprintf("Generating address with prefix=%s , suffix=%s\n", *prefix, *suffix)
-	fmt.Println((introMessage))
+	introMessage := fmt.Sprintf("Generating address with %d workers, prefix=%s, suffix=%s\n", concurrency, *prefix, *suffix)
+	log.Println((introMessage))
 
 	var searchPrefix string
 	var searchSuffix string
@@ -52,7 +52,7 @@ func main() {
 
 	var wg sync.WaitGroup
 
-	for i := 1; i <= *concurrency; i++ {
+	for i := 1; i <= concurrency; i++ {
 		wg.Add(1)
 
 		i := i
@@ -66,9 +66,6 @@ func main() {
 }
 
 func findAddressWorker(id int, prefix string, suffix string, ignoreCase bool) {
-	start := time.Now()
-	fmt.Printf("Worker %d starting...\n", id)
-
 	for {
 		privateKey, err := crypto.GenerateKey()
 		if err != nil {
@@ -93,14 +90,15 @@ func findAddressWorker(id int, prefix string, suffix string, ignoreCase bool) {
 			publicKeyBytes := crypto.FromECDSAPub(publicKeyECDSA)
 			privateKeyBytes := crypto.FromECDSA(privateKey)
 
-			fmt.Printf("\nWorker %d found address:\n", id)
-			fmt.Println("Address:", address)
-			fmt.Println("Public key:", hexutil.Encode(publicKeyBytes)[4:])
-			fmt.Println("Private key:", hexutil.Encode(privateKeyBytes)[2:])
+			log.Println(strings.Join([]string{
+				fmt.Sprintf("Worker %d found address:\n", id),
+				fmt.Sprintf("Address    : %s", address),
+				fmt.Sprintf("Public key : %s", hexutil.Encode(publicKeyBytes)[4:]),
+				fmt.Sprintf("Private key: %s\n", hexutil.Encode(privateKeyBytes)[2:]),
+			}, "\n"))
 
-			elapsed := time.Since(start)
-			fmt.Printf("Total time: %s\n", elapsed)
-			break
+			// no break, find me more addresses
+			// break
 		}
 	}
 	// Exit as soon as any worker finds the address
