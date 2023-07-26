@@ -14,8 +14,10 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/ethereum/go-ethereum/accounts/keystore"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/google/uuid"
 	"golang.org/x/text/message"
 )
 
@@ -174,16 +176,38 @@ func handleProgressUpdate(updateChn chan int) {
 
 func handleKeyFound(keyChn chan *ecdsa.PrivateKey, password string) {
 	for privateKey := range keyChn {
+		address := crypto.PubkeyToAddress(privateKey.PublicKey)
 		publicKeyECDSA, _ := privateKey.Public().(*ecdsa.PublicKey)
-		address := crypto.PubkeyToAddress(*publicKeyECDSA).Hex()
 		publicKeyBytes := crypto.FromECDSAPub(publicKeyECDSA)
 		privateKeyBytes := crypto.FromECDSA(privateKey)
 
-		log.Println(strings.Join([]string{
-			"Found key",
-			fmt.Sprintf("Address    : %s", address),
-			fmt.Sprintf("Public key : %s", hexutil.Encode(publicKeyBytes)[4:]),
-			fmt.Sprintf("Private key: %s\n", hexutil.Encode(privateKeyBytes)[2:]),
-		}, "\n"))
+		if password == "" {
+			log.Println(strings.Join([]string{
+				"Found key",
+				fmt.Sprintf("Address    : %s", address.Hex()),
+				fmt.Sprintf("Public key : %s", hexutil.Encode(publicKeyBytes)[4:]),
+				fmt.Sprintf("Private key: %s\n", hexutil.Encode(privateKeyBytes)[2:]),
+			}, "\n"))
+		} else {
+			// Create the keyfile object with a random UUID.
+			// I don't think we need harder scryptN, scryptP := keystore.StandardScryptN, keystore.StandardScryptP
+			scryptN, scryptP := keystore.LightScryptN, keystore.LightScryptP
+			UUID, err := uuid.NewRandom()
+			if err != nil {
+				log.Fatalf("Failed to generate random uuid: %v", err)
+			}
+
+			key := &keystore.Key{UUID, address, privateKey}
+			keyJson, err := keystore.EncryptKey(key, password, scryptN, scryptP)
+			if err != nil {
+				log.Fatalf("Error encrypting key: %v", err)
+			}
+
+			// Store the file to disk.
+			keyFilePath := fmt.Sprintf("key_%s.json", address.Hex())
+			if err := os.WriteFile(keyFilePath, keyJson, 0600); err != nil {
+				log.Fatalf("Failed to write keyfile to %s: %v", keyFilePath, err)
+			}
+		}
 	}
 }
