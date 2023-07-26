@@ -6,10 +6,12 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"os/signal"
 	"regexp"
 	"runtime"
 	"strings"
 	"sync"
+	"syscall"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -49,6 +51,17 @@ func main() {
 		searchPrefix = *prefix
 		searchSuffix = *suffix
 	}
+
+	// https://www.developer.com/languages/os-signals-go/
+	sigchnl := make(chan os.Signal, 1)
+	signal.Notify(sigchnl)
+
+	go func() {
+		for {
+			s := <-sigchnl
+			handleStopSignal(s)
+		}
+	}()
 
 	var wg sync.WaitGroup
 
@@ -101,6 +114,19 @@ func findAddressWorker(id int, prefix string, suffix string, ignoreCase bool) {
 			// break
 		}
 	}
-	// Exit as soon as any worker finds the address
-	os.Exit(0)
+
+	// Exit when process is interrupted `Ctrl+C` or terminated other way
+}
+
+func handleStopSignal(signal os.Signal) {
+	if signal == syscall.SIGTERM {
+		log.Println("Replit is killing me! Got kill signal.")
+		fmt.Println("Program will terminate now.")
+		os.Exit(0)
+	} else if signal == syscall.SIGINT {
+		log.Println("Received interupt signal. BYE!")
+		fmt.Println("Closing.")
+		os.Exit(0)
+	}
+	// any other signal - just ignore
 }
