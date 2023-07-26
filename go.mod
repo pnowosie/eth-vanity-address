@@ -2,7 +2,10 @@ module github.com/pnowosie/eth-vanity-address
 
 go 1.20
 
-require github.com/ethereum/go-ethereum v1.12.0
+require (
+	github.com/ethereum/go-ethereum v1.12.0
+	golang.org/x/text v0.8.0
+)
 
 require (
 	github.com/btcsuite/btcd/btcec/v2 v2.2.0 // indirect

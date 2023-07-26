@@ -12,9 +12,16 @@ import (
 	"strings"
 	"sync"
 	"syscall"
+	"time"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/crypto"
+	"golang.org/x/text/message"
+)
+
+var (
+	workerProgressUpdateDuration  = 45 * time.Second
+	handlerProgressUpdateDuration = 10 * time.Minute
 )
 
 func main() {
@@ -52,6 +59,11 @@ func main() {
 		searchSuffix = *suffix
 	}
 
+	progressChn := make(chan int)
+	go func() {
+		handleProgressUpdate(progressChn)
+	}()
+
 	// https://www.developer.com/languages/os-signals-go/
 	sigchnl := make(chan os.Signal, 1)
 	signal.Notify(sigchnl)
@@ -71,14 +83,17 @@ func main() {
 		i := i
 		go func() {
 			defer wg.Done()
-			findAddressWorker(i, searchPrefix, searchSuffix, *ignoreCase)
+			findAddressWorker(i, searchPrefix, searchSuffix, *ignoreCase, progressChn)
 		}()
 	}
 
 	wg.Wait()
 }
 
-func findAddressWorker(id int, prefix string, suffix string, ignoreCase bool) {
+func findAddressWorker(id int, prefix string, suffix string, ignoreCase bool, progressChn chan int) {
+	start := time.Now()
+	keysChecked := 0
+
 	for {
 		privateKey, err := crypto.GenerateKey()
 		if err != nil {
@@ -113,6 +128,12 @@ func findAddressWorker(id int, prefix string, suffix string, ignoreCase bool) {
 			// no break, find me more addresses
 			// break
 		}
+		keysChecked++
+
+		if time.Since(start) > workerProgressUpdateDuration {
+			progressChn <- keysChecked
+			keysChecked, start = 0, time.Now()
+		}
 	}
 
 	// Exit when process is interrupted `Ctrl+C` or terminated other way
@@ -129,4 +150,16 @@ func handleStopSignal(signal os.Signal) {
 		os.Exit(0)
 	}
 	// any other signal - just ignore
+}
+
+func handleProgressUpdate(updateChn chan int) {
+	p := message.NewPrinter(message.MatchLanguage("en"))
+	keysChecked, start := 0, time.Now()
+	for keysFromWorker := range updateChn {
+		keysChecked += keysFromWorker
+		if time.Since(start) > handlerProgressUpdateDuration {
+			log.Println(p.Sprintf("Total keys checked: %d", keysChecked))
+			start = time.Now()
+		}
+	}
 }
