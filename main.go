@@ -21,24 +21,57 @@ import (
 	"golang.org/x/text/message"
 )
 
+const PasswordEvnVarName = "ethVA_PASSWORD"
+
 var (
 	workerProgressUpdateDuration  = 30 * time.Second
 	handlerProgressUpdateDuration = 15 * time.Minute
+
+	// GitCommit and the following will be injected at compile time
+	GitCommit = ""
+	GitDate   = ""
+	Version   = ""
 )
+
+// VersionWithMeta holds the textual version string including the metadata.
+var VersionWithMeta = func() string {
+	v := Version
+	if GitCommit != "" {
+		v += "-" + GitCommit[:8]
+	}
+	if GitDate != "" {
+		v += "-" + GitDate
+	}
+	return v
+}()
 
 func main() {
 	concurrency := runtime.NumCPU()
 	prefixRegex := regexp.MustCompile("^0x[0-9a-fA-F]{1,39}$")
 	suffixRegex := regexp.MustCompile("^[0-9a-fA-F]{1,39}$")
 
-	prefix := flag.String("prefix", "", "address prefix")
-	suffix := flag.String("suffix", "", "address suffix")
-	ignoreCase := flag.Bool("ignore-case", false, "case insensitive")
-	password := flag.String("password", "", "when provided saves key into password protected key file")
+	prefix := flag.String("prefix", "", "prefix pattern of the address preceded with `0x`, e.g. '0xABc'")
+	suffix := flag.String("suffix", "", "suffix pattern of the address suffix, e.g. 'DEf'")
+	ignoreCase := flag.Bool("ignore-case", false, "case insensitive search for prefix and suffix")
+	password := flag.String("password", "", "when provided saves key into password protected keyfile. Or set 'ethVA_PASSWORD' env variable")
+
+	var showVersion bool
+	flag.BoolVar(&showVersion, "version", false, "program version")
+	flag.BoolVar(&showVersion, "v", false, "same as -version")
+	flag.Usage = func() {
+		fmt.Printf("Usage of %s-%s:\n", os.Args[0], VersionWithMeta)
+		flag.CommandLine.PrintDefaults()
+	}
+
 	flag.Parse()
 
+	if showVersion {
+		fmt.Printf("%s %s\n", os.Args[0], VersionWithMeta)
+		os.Exit(0)
+	}
+
 	if *prefix == "" && *suffix == "" {
-		log.Fatal("Must specify prefix or suffix")
+		log.Fatal("Arg: prefix or suffix is required")
 	}
 
 	if *prefix != "" && !prefixRegex.MatchString(*prefix) {
@@ -68,9 +101,8 @@ func main() {
 	}()
 
 	keyFoundChn := make(chan *ecdsa.PrivateKey)
-	trimPasswd := strings.TrimRight(*password, "\r\n")
 	go func() {
-		handleKeyFound(keyFoundChn, trimPasswd)
+		handleKeyFound(keyFoundChn, getPassword(*password))
 	}()
 
 	// https://www.developer.com/languages/os-signals-go/
@@ -97,6 +129,14 @@ func main() {
 	}
 
 	wg.Wait()
+}
+
+// getPassword reads and trim the password from provided cmdline argument, then from PasswordEvnVarName environment variable. Returns empty string whether neither is set.
+func getPassword(pwdArg string) string {
+	if pwdArg == "" {
+		pwdArg = os.Getenv(PasswordEvnVarName)
+	}
+	return strings.TrimRight(pwdArg, "\r\n")
 }
 
 func findAddressWorker(

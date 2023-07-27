@@ -8,7 +8,7 @@ simple and fast ethereum vanity address generator forked with :heart: from [6/si
 - `-prefix` e.g. `0xABC` - prefix pattern preceded with 0x
 - `-suffix` e.g. `DEF` - suffix pattern
 - `-ignore-case` - for case-insensitive match
-- `-password` - if provided found keys with be saved in keyfile encrypted with password. It follows Ethereum's V3 keystore schema, can be inspected with `ethkey` tool.
+- `-password` - if provided found keys with be saved in keyfile encrypted with password. It follows [Web3 Secret Storage Definition V3](https://github.com/ethereum/wiki/wiki/Web3-Secret-Storage-Definition) keystore schema, can be inspected with `ethkey` tool. Alternatively one can set `ethVA_PASSWORD` environment variable.
 
 At least either **prefix** or **suffix** have to be provided.
 
@@ -20,10 +20,17 @@ At least either **prefix** or **suffix** have to be provided.
   -suffix def \
   -ignore-case 2>> vanity.log
 ```
-it will use available number of CPUs to spin worker goroutines. Progress (number of generated keys) is reported by separate goroutine in 15-minutes (hardcoded) intervals. It's recommended to redirect output to file as shown above.
 
-**Sample output file**
-```json
+- it will use available number of CPUs to spin worker goroutines. 
+- Progress (number of generated keys) is reported by separate goroutine in 15-minutes (hardcoded) intervals. 
+- It won't stop searching for key once found. 
+- It's recommended to redirect output to file as shown above, because stdout might be less reliable (e.g. on [Replit](https://replit.com))
+
+
+<details>
+  <summary><b>Sample output file</b></summary>
+
+```txt
 2023/07/26 18:44:09 Generating address with 12 workers, prefix=0x123456, suffix=
 
 2023/07/26 18:44:39 Total keys checked: 1,281,799
@@ -40,7 +47,9 @@ Private key: *****
 2023/07/26 18:48:31 Received interrupt signal. BYE!
 ```
 
-## Instalation
+</details>
+
+## Installation
 
 ### Dependencies
 
@@ -48,9 +57,8 @@ Private key: *****
 
 
 ```bash
-git clone https://github.com/pnowosie/eth-vanity-address.git
-cd eth-vanity-address
-make
+git clone https://github.com/pnowosie/eth-vanity-address
+cd eth-vanity-address && make
 ```
 
 
