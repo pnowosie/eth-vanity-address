@@ -30,12 +30,12 @@ var (
 	// GitCommit and the following will be injected at compile time
 	GitCommit = ""
 	GitDate   = ""
-	Version   = ""
+	Version   = "Dev"
 )
 
 // VersionWithMeta holds the textual version string including the metadata.
 var VersionWithMeta = func() string {
-	v := Version
+	v := "v" + Version
 	if GitCommit != "" {
 		v += "-" + GitCommit[:8]
 	}
