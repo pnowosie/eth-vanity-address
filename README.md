@@ -8,7 +8,7 @@ simple and fast ethereum vanity address generator forked with :heart: from [6/si
 - `-prefix` e.g. `0xABC` - prefix pattern preceded with 0x
 - `-suffix` e.g. `DEF` - suffix pattern
 - `-ignore-case` - for case-insensitive match
-- `-password` - if provided found keys with be saved in keyfile encrypted with password. It follows [Web3 Secret Storage Definition V3](https://github.com/ethereum/wiki/wiki/Web3-Secret-Storage-Definition) keystore schema, can be inspected with `ethkey` tool. Alternatively one can set `ethVA_PASSWORD` environment variable.
+- `-password` - if provided found keys will be saved in keyfile encrypted with password. It follows [Web3 Secret Storage Definition V3](https://github.com/ethereum/wiki/wiki/Web3-Secret-Storage-Definition) keystore schema, can be inspected with `ethkey` tool. Alternatively one can set `ethVA_PASSWORD` environment variable.
 
 At least either **prefix** or **suffix** have to be provided.
 
@@ -51,16 +51,42 @@ Private key: *****
 
 ## Installation
 
-### Dependencies
+### RECOMMENDED: Use release
 
-- Golang version >= `1.20`
-
+**GH Cli** isn't hard dependency, you can `curl` instead, but why make your life harder?
+**Make sure:** pattern `-p` matches correct target architecture. Run `gh release view --repo pnowosie/eth-vanity-address` when uncertain.
 
 ```bash
-git clone https://github.com/pnowosie/eth-vanity-address
-cd eth-vanity-address && make
+gh release download -p "*darwin_amd64*" --repo pnowosie/eth-vanity-address \
+  && tar -xvf eth-vanity-address*.tar.gz \
+  && mv eth-vanity-address $GOBIN/
 ```
 
+### Build from sources
+
+This approach is recommended only if there is no release matching target architecture.
+
+**Dependencies:**
+- Golang version >= `1.20`
+- `GOBIN` env variable is set and added to `PATH``
+
+```bash
+go install github.com/pnowosie/eth-vanity-address@latest
+```
+
+## How it is different from fork?
+
+Most significant changes are:
+- doesn't stop after first found,
+- saves key in standard keystore file (see `password` option),
+- removed `concurrency` option - uses all available cores instead,
+- progress (number of checked keys) is reported periodically,
+- subjectively less bloated output.
+
+For more details, run:
+```bash
+git log --pretty=oneline --abbrev-commit 1a4f194..@
+```
 
 
 **:warning: This software has not been audited. use at your own risk!**
